@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Peoplebook – Contact Management System</title>
+<style>
+:root{--bg:#f3f5f1;--card:#fff;--ink:#1d2a24;--mute:#68766f;--line:#dde3dc;--accent:#1f6f54;--accent-ink:#fff;--danger:#b3372b;--chip:#e3eee8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121815;--card:#1b2420;--ink:#e8efe9;--mute:#93a39a;--line:#2b3832;--accent:#5fc79e;--accent-ink:#0d1a14;--danger:#ef8b80;--chip:#24342d}}
+:root[data-theme="dark"]{--bg:#121815;--card:#1b2420;--ink:#e8efe9;--mute:#93a39a;--line:#2b3832;--accent:#5fc79e;--accent-ink:#0d1a14;--danger:#ef8b80;--chip:#24342d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Georgia,"Times New Roman",serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:26px;margin:0;letter-spacing:-.3px}
+.sub{color:var(--mute);font:14px system-ui,sans-serif;margin-top:2px}
+button,input{font:15px system-ui,sans-serif}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.danger{color:var(--danger)}
+.bar{display:flex;gap:10px;margin-bottom:6px}
+.bar input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.count{display:flex;justify-content:space-between;color:var(--mute);font:14px system-ui,sans-serif;margin:12px 2px}
+.count b{color:var(--ink)}
+.list{display:grid;gap:10px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:44px 1fr;gap:12px}
+.av{width:44px;height:44px;border-radius:50%;background:var(--chip);color:var(--accent);display:grid;place-items:center;font:600 15px system-ui,sans-serif}
+.name{font-size:18px;font-weight:700}
+.meta{font:14px system-ui,sans-serif;color:var(--mute);word-break:break-word}
+.acts{display:flex;gap:8px;margin-top:10px}
+.acts .btn{padding:6px 12px;font-size:14px}
+.empty{text-align:center;color:var(--mute);padding:36px 12px;border:1px dashed var(--line);border-radius:10px;font:15px system-ui,sans-serif}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,92vw);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+label{display:block;font:13px system-ui,sans-serif;color:var(--mute);margin:10px 0 4px}
+dialog input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.err{color:var(--danger);font:13px system-ui,sans-serif;min-height:18px;margin-top:8px}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>Peoplebook</h1><div class="sub">Your contacts, saved in one place</div></div>
+    <button class="btn" id="theme" aria-label="Switch light or dark theme">Theme</button>
+  </header>
+
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search name, phone, email, city" aria-label="Search contacts">
+    <button class="btn primary" id="add">Add contact</button>
+  </div>
+  <div class="count"><span>Total contacts: <b id="total">0</b></span><span><b id="shown">0</b> shown</span></div>
+  <div class="list" id="list"></div>
+</main>
+
+<dialog id="dlg">
+  <h2 id="dtitle" style="margin:0 0 4px;font-size:20px">Add contact</h2>
+  <div class="row">
+    <div><label for="fn">First name *</label><input id="fn" autocomplete="off"></div>
+    <div><label for="ln">Last name</label><input id="ln" autocomplete="off"></div>
+  </div>
+  <label for="ph">Phone *</label><input id="ph" type="tel" placeholder="+91 98765 43210">
+  <label for="em">Email</label><input id="em" type="email">
+  <label for="ct">City</label><input id="ct">
+  <div class="err" id="err"></div>
+  <div class="foot">
+    <button class="btn" id="cancel">Cancel</button>
+    <button class="btn primary" id="save">Save contact</button>
+  </div>
+</dialog>
+
+<script>
+const KEY = "peoplebook-contacts";
+const seed = [
+  {id:"1",first:"Alex",last:"Morgan",phone:"+1-202-555-0101",email:"alex.morgan@example.com",city:"Seattle"},
+  {id:"2",first:"Sam",last:"Rivera",phone:"+1-202-555-0102",email:"sam.rivera@example.com",city:"Portland"},
+  {id:"3",first:"Jordan",last:"Lee",phone:"+1-202-555-0103",email:"jordan.lee@example.com",city:"San Francisco"},
+  {id:"4",first:"Taylor",last:"Brooks",phone:"+1-202-555-0104",email:"taylor.brooks@example.com",city:"Austin"},
+  {id:"5",first:"Casey",last:"Patel",phone:"+1-202-555-0105",email:"casey.patel@example.com",city:"Chicago"}
+];
+let contacts, editId = null;
+try { const s = localStorage.getItem(KEY); contacts = s ? JSON.parse(s) : seed.slice(); } catch(e) { contacts = seed.slice(); }
+if (!Array.isArray(contacts)) contacts = seed.slice();
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(contacts)); } catch(e) {} }
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function render(){
+  const k = $("q").value.trim().toLowerCase();
+  const rows = contacts
+    .filter(c => !k || [c.first,c.last,c.phone,c.email,c.city].some(v => (v||"").toLowerCase().includes(k)))
+    .sort((a,b) => a.first.localeCompare(b.first));
+  $("total").textContent = contacts.length;
+  $("shown").textContent = rows.length;
+  $("list").innerHTML = rows.length ? rows.map(c => `
+    <div class="c">
+      <div class="av">${esc((c.first[0]||"")+(c.last[0]||""))}</div>
+      <div>
+        <div class="name">${esc(c.first)} ${esc(c.last)}</div>
+        <div class="meta">${esc(c.city)}</div>
+        <div class="meta">${esc(c.phone)}</div>
+        <div class="meta">${esc(c.email)}</div>
+        <div class="acts">
+          <button class="btn" data-e="${c.id}">Edit</button>
+          <button class="btn danger" data-d="${c.id}">Delete</button>
+        </div>
+      </div>
+    </div>`).join("")
+    : `<div class="empty">${contacts.length ? "No contact matches your search." : "No contacts yet. Tap Add contact to save your first one."}</div>`;
+}
+
+function openForm(c){
+  editId = c ? c.id : null;
+  $("dtitle").textContent = c ? "Edit contact" : "Add contact";
+  $("fn").value = c?.first||""; $("ln").value = c?.last||"";
+  $("ph").value = c?.phone||""; $("em").value = c?.email||""; $("ct").value = c?.city||"";
+  $("err").textContent = "";
+  $("dlg").showModal();
+}
+
+$("add").onclick = () => openForm(null);
+$("cancel").onclick = () => $("dlg").close();
+$("q").oninput = render;
+
+$("save").onclick = () => {
+  const first = $("fn").value.trim(), last = $("ln").value.trim(),
+        phone = $("ph").value.trim(), email = $("em").value.trim(), city = $("ct").value.trim();
+  if (!first) return $("err").textContent = "Enter a first name.";
+  if (!phone) return $("err").textContent = "Enter a phone number.";
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) return $("err").textContent = "Enter a valid email address.";
+  if (contacts.some(c => c.phone === phone && c.id !== editId)) return $("err").textContent = "This phone number is already saved.";
+  if (editId) {
+    Object.assign(contacts.find(c => c.id === editId), {first,last,phone,email,city});
+  } else {
+    contacts.push({id: String(Date.now()), first,last,phone,email,city});
+  }
+  persist(); render(); $("dlg").close();
+};
+
+$("list").onclick = e => {
+  const ed = e.target.dataset.e, del = e.target.dataset.d;
+  if (ed) openForm(contacts.find(c => c.id === ed));
+  if (del && confirm("Delete this contact?")) {
+    contacts = contacts.filter(c => c.id !== del);
+    persist(); render();
+  }
+};
+
+$("theme").onclick = () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark";
+};
+
+render();
+</script>
+</body>
+</html>
